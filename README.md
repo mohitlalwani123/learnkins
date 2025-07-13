@@ -1,1 +1,2 @@
-# brillix1
+# learnkins
+gamified learning platform 

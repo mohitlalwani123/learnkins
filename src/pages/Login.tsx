@@ -23,32 +23,54 @@ const Login: React.FC = () => {
   const from = (location.state as any)?.from?.pathname || '/';
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
     if (error) clearError();
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
+    if (!formData.email || !formData.password) {
+      return;
+    }
+    
     setLoading(true);
 
     try {
+      console.log('Submitting login form with:', formData.email);
       const result = await login(formData);
       
       if (result.success) {
+        console.log('Login successful, navigating to:', from);
         navigate(from, { replace: true });
+      } else {
+        console.error('Login failed:', result.error);
       }
     } catch (err) {
-      console.error('Login error:', err);
+      console.error('Login submission error:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDemoLogin = (email: string, password: string) => {
+  const handleDemoLogin = async (email: string, password: string) => {
     setFormData({ email, password });
+    setLoading(true);
+    
+    try {
+      const result = await login({ email, password });
+      if (result.success) {
+        navigate(from, { replace: true });
+      }
+    } catch (err) {
+      console.error('Demo login error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -105,6 +127,7 @@ const Login: React.FC = () => {
                   onChange={handleChange}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-learnkins-blue-500 focus:border-learnkins-blue-500 transition-colors"
                   placeholder="Enter your email"
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -124,11 +147,13 @@ const Login: React.FC = () => {
                   onChange={handleChange}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-learnkins-blue-500 focus:border-learnkins-blue-500 pr-10 transition-colors"
                   placeholder="Enter your password"
+                  disabled={loading}
                 />
                 <button
                   type="button"
                   className="absolute inset-y-0 right-0 pr-3 flex items-center"
                   onClick={() => setShowPassword(!showPassword)}
+                  disabled={loading}
                 >
                   {showPassword ? (
                     <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
@@ -146,6 +171,7 @@ const Login: React.FC = () => {
                   name="remember-me"
                   type="checkbox"
                   className="h-4 w-4 text-learnkins-blue-600 focus:ring-learnkins-blue-500 border-gray-300 rounded"
+                  disabled={loading}
                 />
                 <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
                   Remember me
@@ -165,7 +191,7 @@ const Login: React.FC = () => {
             <div>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !formData.email || !formData.password}
                 className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-learnkins-gradient hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-learnkins-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
               >
                 {loading ? (
@@ -194,7 +220,8 @@ const Login: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleDemoLogin('student@learnkins.com', 'student123')}
-                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
+                disabled={loading}
+                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 <span className="text-learnkins-blue-600 mr-1">👨‍🎓</span>
                 Student
@@ -202,7 +229,8 @@ const Login: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleDemoLogin('parent@learnkins.com', 'parent123')}
-                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
+                disabled={loading}
+                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 <span className="text-learnkins-green-600 mr-1">👨‍👩‍👧‍👦</span>
                 Parent
@@ -212,7 +240,8 @@ const Login: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleDemoLogin('teacher@learnkins.com', 'teacher123')}
-                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
+                disabled={loading}
+                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 <span className="text-learnkins-purple-600 mr-1">👨‍🏫</span>
                 Teacher
@@ -220,7 +249,8 @@ const Login: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleDemoLogin('admin@learnkins.com', 'admin123')}
-                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors"
+                disabled={loading}
+                className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 transition-colors disabled:opacity-50"
               >
                 <span className="text-learnkins-orange-600 mr-1">👨‍💼</span>
                 Admin

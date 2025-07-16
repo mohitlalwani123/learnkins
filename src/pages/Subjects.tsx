@@ -1,45 +1,120 @@
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Play, FileText, HelpCircle } from "lucide-react";
+import { subjectsAPI } from "../utils/api";
+
+interface Subject {
+  _id: string;
+  name: string;
+  slug: string;
+  description: string;
+  icon: string;
+  color: string;
+  grade: string;
+  chapters: any[];
+  totalStudents: number;
+  averageRating: number;
+}
 
 const Subjects = () => {
-  const subjects = [
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fallback subjects data
+  const fallbackSubjects = [
     {
+      _id: "1",
       name: "Science",
       slug: "science",
-      description:
-        "Explore the wonders of physics, chemistry, and biology through interactive experiments and engaging content.",
+      description: "Explore the wonders of physics, chemistry, and biology through interactive experiments and engaging content.",
       color: "from-learnkins-purple-500 to-learnkins-purple-600",
       icon: "🔬",
+      grade: "8th",
+      chapters: [],
+      totalStudents: 1250,
+      averageRating: 4.8,
       topics: ["Physics", "Chemistry", "Biology", "Environmental Science"],
     },
     {
+      _id: "2",
       name: "Mathematics",
       slug: "mathematics",
-      description:
-        "Master mathematical concepts from basic arithmetic to advanced problem-solving techniques.",
+      description: "Master mathematical concepts from basic arithmetic to advanced problem-solving techniques.",
       color: "from-learnkins-blue-500 to-learnkins-blue-600",
       icon: "📊",
+      grade: "8th",
+      chapters: [],
+      totalStudents: 1180,
+      averageRating: 4.7,
       topics: ["Algebra", "Geometry", "Statistics", "Number Theory"],
     },
     {
+      _id: "3",
       name: "Social Science",
       slug: "social-science",
-      description:
-        "Understand history, geography, civics, and economics through engaging stories and interactive maps.",
+      description: "Understand history, geography, civics, and economics through engaging stories and interactive maps.",
       color: "from-learnkins-green-500 to-learnkins-green-600",
       icon: "🌍",
+      grade: "8th",
+      chapters: [],
+      totalStudents: 980,
+      averageRating: 4.6,
       topics: ["History", "Geography", "Civics", "Economics"],
     },
     {
+      _id: "4",
       name: "English",
       slug: "english",
-      description:
-        "Develop reading, writing, and communication skills through literature and creative exercises.",
+      description: "Develop reading, writing, and communication skills through literature and creative exercises.",
       color: "from-learnkins-orange-500 to-learnkins-orange-600",
       icon: "📚",
+      grade: "8th",
+      chapters: [],
+      totalStudents: 1050,
+      averageRating: 4.9,
       topics: ["Grammar", "Literature", "Creative Writing", "Comprehension"],
     },
   ];
+
+  useEffect(() => {
+    const fetchSubjects = async () => {
+      try {
+        setLoading(true);
+        console.log('Fetching subjects from API...');
+        
+        const response = await subjectsAPI.getAll('8th');
+        console.log('Subjects API response:', response.data);
+        
+        if (response.data.success && response.data.data.length > 0) {
+          setSubjects(response.data.data);
+        } else {
+          console.log('No subjects from API, using fallback data');
+          setSubjects(fallbackSubjects);
+        }
+      } catch (error) {
+        console.error('Error fetching subjects:', error);
+        console.log('Using fallback subjects data');
+        setSubjects(fallbackSubjects);
+        setError('Unable to load subjects from server. Showing demo data.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSubjects();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading subjects...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -56,6 +131,11 @@ const Subjects = () => {
             <ArrowRight className="h-5 w-5" />
             <span>Subjects</span>
           </div>
+          {error && (
+            <div className="mt-4 bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+              {error}
+            </div>
+          )}
         </div>
       </section>
 
@@ -74,7 +154,7 @@ const Subjects = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {subjects.map((subject, index) => (
               <div
-                key={index}
+                key={subject._id || index}
                 className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 overflow-hidden group"
               >
                 <div
@@ -93,18 +173,32 @@ const Subjects = () => {
                 <div className="p-8">
                   <div className="mb-6">
                     <h4 className="text-lg font-semibold text-gray-900 mb-3">
-                      Topics Covered:
+                      Course Info:
                     </h4>
-                    <div className="flex flex-wrap gap-2">
-                      {subject.topics.map((topic, topicIndex) => (
-                        <span
-                          key={topicIndex}
-                          className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium"
-                        >
-                          {topic}
-                        </span>
-                      ))}
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                        Grade: {subject.grade}
+                      </span>
+                      <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                        {subject.totalStudents} Students
+                      </span>
+                      <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
+                        ⭐ {subject.averageRating}/5
+                      </span>
                     </div>
+                    
+                    {(subject as any).topics && (
+                      <div className="flex flex-wrap gap-2">
+                        {(subject as any).topics.map((topic: string, topicIndex: number) => (
+                          <span
+                            key={topicIndex}
+                            className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium"
+                          >
+                            {topic}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex items-center justify-between">

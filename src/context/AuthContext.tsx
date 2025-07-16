@@ -105,18 +105,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('token');
-      if (token) {
+      const savedUser = localStorage.getItem('user');
+      
+      if (token && savedUser) {
         try {
-          const response = await authAPI.getMe();
+          // Try to parse saved user first
+          const user = JSON.parse(savedUser);
           dispatch({
             type: 'AUTH_SUCCESS',
-            payload: {
-              user: response.data.user,
-              token
-            }
+            payload: { user, token }
           });
-        } catch (error) {
-          console.error('Auth check failed:', error);
+          
+          // Verify token with backend
+          try {
+            const response = await authAPI.getMe();
+            dispatch({
+              type: 'AUTH_SUCCESS',
+              payload: {
+                user: response.data.user,
+                token
+              }
+            });
+          } catch (verifyError) {
+            console.warn('Token verification failed, but using cached user data');
+          }
+        } catch (parseError) {
+          console.error('Failed to parse saved user data:', parseError);
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           dispatch({ type: 'AUTH_FAIL', payload: null });
@@ -133,9 +147,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (credentials: { email: string; password: string }) => {
     try {
       dispatch({ type: 'AUTH_START' });
+      
+      console.log('Attempting login with:', credentials.email);
+      
       const response = await authAPI.login(credentials);
       
+      console.log('Login response:', response.data);
+      
       const { token, user } = response.data;
+      
+      if (!token || !user) {
+        throw new Error('Invalid response from server');
+      }
       
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
@@ -145,10 +168,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         payload: { user, token }
       });
       
+      console.log('Login successful for user:', user.email);
+      
       return { success: true };
     } catch (error: any) {
       console.error('Login error:', error);
-      const message = error.response?.data?.message || 'Login failed';
+      
+      let message = 'Login failed. Please try again.';
+      
+      if (error.response?.data?.message) {
+        message = error.response.data.message;
+      } else if (error.message) {
+        message = error.message;
+      }
+      
       dispatch({ type: 'AUTH_FAIL', payload: message });
       return { success: false, error: message };
     }
@@ -158,9 +191,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (userData: any) => {
     try {
       dispatch({ type: 'AUTH_START' });
+      
+      console.log('Attempting registration for:', userData.email);
+      
       const response = await authAPI.register(userData);
       
+      console.log('Registration response:', response.data);
+      
       const { token, user } = response.data;
+      
+      if (!token || !user) {
+        throw new Error('Invalid response from server');
+      }
       
       localStorage.setItem('token', token);
       localStorage.setItem('user', JSON.stringify(user));
@@ -170,10 +212,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         payload: { user, token }
       });
       
+      console.log('Registration successful for user:', user.email);
+      
       return { success: true };
     } catch (error: any) {
       console.error('Registration error:', error);
-      const message = error.response?.data?.message || 'Registration failed';
+      
+      let message = 'Registration failed. Please try again.';
+      
+      if (error.response?.data?.message) {
+        message = error.response.data.message;
+      } else if (error.message) {
+        message = error.message;
+      }
+      
       dispatch({ type: 'AUTH_FAIL', payload: message });
       return { success: false, error: message };
     }
@@ -189,6 +241,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       dispatch({ type: 'LOGOUT' });
+      console.log('User logged out successfully');
     }
   };
 
@@ -196,10 +249,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const updateProfile = async (data: any) => {
     try {
       const response = await authAPI.updateProfile(data);
+      
+      const updatedUser = response.data.user;
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      
       dispatch({
         type: 'UPDATE_USER',
-        payload: response.data.user
+        payload: updatedUser
       });
+      
       return { success: true };
     } catch (error: any) {
       const message = error.response?.data?.message || 'Update failed';

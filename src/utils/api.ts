@@ -1,12 +1,13 @@
 import axios, { AxiosResponse } from 'axios';
 
-// Create axios instance
+// Create axios instance with proper configuration
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
-  }
+  },
+  withCredentials: false
 });
 
 // Request interceptor to add auth token
@@ -19,6 +20,7 @@ api.interceptors.request.use(
     return config;
   },
   (error) => {
+    console.error('Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
@@ -29,11 +31,16 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
+    console.error('API Error:', error.response?.data || error.message);
+    
     if (error.response?.status === 401) {
       // Token expired or invalid
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Only redirect if not already on login page
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -41,14 +48,39 @@ api.interceptors.response.use(
 
 // Auth API calls
 export const authAPI = {
-  register: (userData: any): Promise<AxiosResponse> => api.post('/auth/register', userData),
-  login: (credentials: any): Promise<AxiosResponse> => api.post('/auth/login', credentials),
-  logout: (): Promise<AxiosResponse> => api.post('/auth/logout'),
-  getMe: (): Promise<AxiosResponse> => api.get('/auth/me'),
-  updateProfile: (data: any): Promise<AxiosResponse> => api.put('/auth/profile', data),
-  changePassword: (data: any): Promise<AxiosResponse> => api.put('/auth/change-password', data),
-  forgotPassword: (email: string): Promise<AxiosResponse> => api.post('/auth/forgot-password', { email }),
-  resetPassword: (token: string, password: string): Promise<AxiosResponse> => api.put(`/auth/reset-password/${token}`, { password })
+  register: (userData: any): Promise<AxiosResponse> => {
+    console.log('Registering user:', userData);
+    return api.post('/auth/register', userData);
+  },
+  
+  login: (credentials: any): Promise<AxiosResponse> => {
+    console.log('Logging in user:', credentials.email);
+    return api.post('/auth/login', credentials);
+  },
+  
+  logout: (): Promise<AxiosResponse> => {
+    return api.post('/auth/logout');
+  },
+  
+  getMe: (): Promise<AxiosResponse> => {
+    return api.get('/auth/me');
+  },
+  
+  updateProfile: (data: any): Promise<AxiosResponse> => {
+    return api.put('/auth/profile', data);
+  },
+  
+  changePassword: (data: any): Promise<AxiosResponse> => {
+    return api.put('/auth/change-password', data);
+  },
+  
+  forgotPassword: (email: string): Promise<AxiosResponse> => {
+    return api.post('/auth/forgot-password', { email });
+  },
+  
+  resetPassword: (token: string, password: string): Promise<AxiosResponse> => {
+    return api.put(`/auth/reset-password/${token}`, { password });
+  }
 };
 
 // Users API calls

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
@@ -10,139 +10,152 @@ import {
   Clock,
   Star,
 } from "lucide-react";
+import { communityAPI } from "../utils/api";
+
+interface Discussion {
+  _id: string;
+  title: string;
+  content: string;
+  author: {
+    name: string;
+    avatar?: string;
+  };
+  subject: string;
+  replies: any[];
+  likes: string[];
+  views: number;
+  createdAt: string;
+}
+
+interface StudyGroup {
+  _id: string;
+  name: string;
+  description: string;
+  subject: string;
+  members: any[];
+  maxMembers: number;
+  activityLevel: string;
+  creator: {
+    name: string;
+  };
+}
 
 const Community = () => {
   const [activeTab, setActiveTab] = useState("discussions");
+  const [discussions, setDiscussions] = useState<Discussion[]>([]);
+  const [studyGroups, setStudyGroups] = useState<StudyGroup[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const discussions = [
+  // Fallback data
+  const fallbackDiscussions = [
     {
-      id: 1,
+      _id: "1",
       title: "Need help with Quadratic Equations",
-      author: "Alex Chen",
+      content: "I'm struggling with understanding the discriminant in quadratic equations. Can someone explain it in simple terms?",
+      author: { name: "Alex Chen" },
       subject: "Mathematics",
-      replies: 12,
-      likes: 24,
-      time: "2 hours ago",
-      preview:
-        "I'm struggling with understanding the discriminant in quadratic equations. Can someone explain it in simple terms?",
+      replies: [],
+      likes: [],
+      views: 24,
+      createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
     },
     {
-      id: 2,
+      _id: "2",
       title: "Photosynthesis experiment results",
-      author: "Sarah Johnson",
+      content: "Just completed the photosynthesis experiment. Here are my observations and some questions about the process.",
+      author: { name: "Sarah Johnson" },
       subject: "Science",
-      replies: 8,
-      likes: 18,
-      time: "4 hours ago",
-      preview:
-        "Just completed the photosynthesis experiment. Here are my observations and some questions about the process.",
+      replies: [],
+      likes: [],
+      views: 18,
+      createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
     },
     {
-      id: 3,
+      _id: "3",
       title: "Tips for memorizing historical dates",
-      author: "Mike Rodriguez",
+      content: "What are your best strategies for remembering important dates in history? I've tried several methods but...",
+      author: { name: "Mike Rodriguez" },
       subject: "Social Science",
-      replies: 15,
-      likes: 32,
-      time: "6 hours ago",
-      preview:
-        "What are your best strategies for remembering important dates in history? I've tried several methods but...",
-    },
-    {
-      id: 4,
-      title: "Creative writing assignment feedback",
-      author: "Emily Davis",
-      subject: "English",
-      replies: 6,
-      likes: 14,
-      time: "8 hours ago",
-      preview:
-        "Would love to get some feedback on my short story. It's about a young explorer who discovers a hidden world.",
+      replies: [],
+      likes: [],
+      views: 32,
+      createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
     },
   ];
 
-  const studyGroups = [
+  const fallbackStudyGroups = [
     {
+      _id: "1",
       name: "Math Masters",
-      members: 45,
-      subject: "Mathematics",
       description: "Collaborative problem-solving and concept discussions",
-      activity: "Very Active",
-      color: "bg-blue-500",
+      subject: "Mathematics",
+      members: Array(45).fill({}),
+      maxMembers: 50,
+      activityLevel: "Very Active",
+      creator: { name: "John Doe" },
     },
     {
+      _id: "2",
       name: "Science Explorers",
-      members: 38,
-      subject: "Science",
       description: "Experiment sharing and scientific discussions",
-      activity: "Active",
-      color: "bg-purple-500",
-    },
-    {
-      name: "History Buffs",
-      members: 29,
-      subject: "Social Science",
-      description: "Historical analysis and timeline discussions",
-      activity: "Moderate",
-      color: "bg-green-500",
-    },
-    {
-      name: "Word Wizards",
-      members: 33,
-      subject: "English",
-      description: "Creative writing and literature discussions",
-      activity: "Active",
-      color: "bg-orange-500",
+      subject: "Science",
+      members: Array(38).fill({}),
+      maxMembers: 50,
+      activityLevel: "Active",
+      creator: { name: "Jane Smith" },
     },
   ];
 
-  const achievements = [
-    {
-      title: "Quiz Master",
-      description: "Scored 100% on 10 quizzes",
-      icon: "🏆",
-      rarity: "Gold",
-      earned: 156,
-    },
-    {
-      title: "Helpful Helper",
-      description: "Helped 50 students with their questions",
-      icon: "🤝",
-      rarity: "Silver",
-      earned: 89,
-    },
-    {
-      title: "Discussion Starter",
-      description: "Started 25 meaningful discussions",
-      icon: "💬",
-      rarity: "Bronze",
-      earned: 234,
-    },
-    {
-      title: "Study Streak",
-      description: "Studied for 30 consecutive days",
-      icon: "🔥",
-      rarity: "Gold",
-      earned: 67,
-    },
-  ];
+  useEffect(() => {
+    const fetchCommunityData = async () => {
+      try {
+        setLoading(true);
+        
+        if (activeTab === "discussions") {
+          try {
+            const response = await communityAPI.getDiscussions();
+            if (response.data.success && response.data.data.length > 0) {
+              setDiscussions(response.data.data);
+            } else {
+              setDiscussions(fallbackDiscussions);
+            }
+          } catch (error) {
+            console.error('Error fetching discussions:', error);
+            setDiscussions(fallbackDiscussions);
+          }
+        } else if (activeTab === "groups") {
+          try {
+            const response = await communityAPI.getStudyGroups();
+            if (response.data.success && response.data.data.length > 0) {
+              setStudyGroups(response.data.data);
+            } else {
+              setStudyGroups(fallbackStudyGroups);
+            }
+          } catch (error) {
+            console.error('Error fetching study groups:', error);
+            setStudyGroups(fallbackStudyGroups);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching community data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const leaderboard = [
-    { rank: 1, name: "Alex Johnson", points: 9850, badge: "🥇", change: "+2" },
-    { rank: 2, name: "Sarah Chen", points: 9720, badge: "🥈", change: "-1" },
-    {
-      rank: 3,
-      name: "Mike Rodriguez",
-      points: 9650,
-      badge: "🥉",
-      change: "+1",
-    },
-    { rank: 4, name: "Emily Davis", points: 9580, badge: "🏅", change: "-2" },
-    { rank: 5, name: "David Kim", points: 9520, badge: "🏅", change: "=" },
-    { rank: 6, name: "Lisa Wang", points: 9480, badge: "🏅", change: "+3" },
-    { rank: 7, name: "John Smith", points: 9450, badge: "🏅", change: "-1" },
-    { rank: 8, name: "Anna Brown", points: 9420, badge: "🏅", change: "+1" },
-  ];
+    fetchCommunityData();
+  }, [activeTab]);
+
+  const formatTimeAgo = (dateString: string) => {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) return "Just now";
+    if (diffInHours < 24) return `${diffInHours} hours ago`;
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays} days ago`;
+  };
 
   const getActivityColor = (activity: string) => {
     switch (activity) {
@@ -152,19 +165,6 @@ const Community = () => {
         return "text-blue-600 bg-blue-100";
       case "Moderate":
         return "text-yellow-600 bg-yellow-100";
-      default:
-        return "text-gray-600 bg-gray-100";
-    }
-  };
-
-  const getRarityColor = (rarity: string) => {
-    switch (rarity) {
-      case "Gold":
-        return "text-yellow-600 bg-yellow-100";
-      case "Silver":
-        return "text-gray-600 bg-gray-100";
-      case "Bronze":
-        return "text-orange-600 bg-orange-100";
       default:
         return "text-gray-600 bg-gray-100";
     }
@@ -231,12 +231,12 @@ const Community = () => {
               },
               {
                 label: "Discussions",
-                value: "1,200+",
+                value: discussions.length.toString(),
                 icon: <MessageCircle className="h-8 w-8" />,
               },
               {
                 label: "Study Groups",
-                value: "150+",
+                value: studyGroups.length.toString(),
                 icon: <Users className="h-8 w-8" />,
               },
               {
@@ -287,255 +287,153 @@ const Community = () => {
       {/* Content Section */}
       <section className="py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {activeTab === "discussions" && (
-            <div>
-              <div className="flex justify-between items-center mb-8">
-                <h2 className="text-3xl font-bold text-gray-900">
-                  Recent Discussions
-                </h2>
-                <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300 font-medium">
-                  Start New Discussion
-                </button>
-              </div>
+          {loading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-gray-600">Loading...</p>
+            </div>
+          ) : (
+            <>
+              {activeTab === "discussions" && (
+                <div>
+                  <div className="flex justify-between items-center mb-8">
+                    <h2 className="text-3xl font-bold text-gray-900">
+                      Recent Discussions
+                    </h2>
+                    <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300 font-medium">
+                      Start New Discussion
+                    </button>
+                  </div>
 
-              <div className="space-y-6">
-                {discussions.map((discussion) => (
-                  <div
-                    key={discussion.id}
-                    className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 p-6"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="text-xl font-semibold text-gray-900 hover:text-blue-600 cursor-pointer">
-                            {discussion.title}
-                          </h3>
-                          <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
-                            {discussion.subject}
+                  <div className="space-y-6">
+                    {discussions.map((discussion) => (
+                      <div
+                        key={discussion._id}
+                        className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 p-6"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-2">
+                              <h3 className="text-xl font-semibold text-gray-900 hover:text-blue-600 cursor-pointer">
+                                {discussion.title}
+                              </h3>
+                              <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
+                                {discussion.subject}
+                              </span>
+                            </div>
+
+                            <p className="text-gray-600 mb-4">
+                              {discussion.content.substring(0, 150)}...
+                            </p>
+
+                            <div className="flex items-center space-x-6 text-sm text-gray-500">
+                              <span>By {discussion.author.name}</span>
+                              <div className="flex items-center space-x-1">
+                                <Clock className="h-4 w-4" />
+                                <span>{formatTimeAgo(discussion.createdAt)}</span>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <MessageCircle className="h-4 w-4" />
+                                <span>{discussion.replies.length} replies</span>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <Heart className="h-4 w-4" />
+                                <span>{discussion.likes.length} likes</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex space-x-2 ml-4">
+                            <button
+                              className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                              aria-label="Like discussion"
+                              title="Like discussion"
+                            >
+                              <Heart className="h-5 w-5" />
+                            </button>
+                            <button
+                              className="p-2 text-gray-400 hover:text-blue-500 transition-colors"
+                              aria-label="Share discussion"
+                              title="Share discussion"
+                            >
+                              <Share2 className="h-5 w-5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "groups" && (
+                <div>
+                  <div className="flex justify-between items-center mb-8">
+                    <h2 className="text-3xl font-bold text-gray-900">
+                      Study Groups
+                    </h2>
+                    <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300 font-medium">
+                      Create Group
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {studyGroups.map((group) => (
+                      <div
+                        key={group._id}
+                        className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 p-6"
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                              {group.name.charAt(0)}
+                            </div>
+                            <div>
+                              <h3 className="text-xl font-semibold text-gray-900">
+                                {group.name}
+                              </h3>
+                              <p className="text-sm text-gray-600">
+                                {group.subject}
+                              </p>
+                            </div>
+                          </div>
+                          <span
+                            className={`px-2 py-1 text-xs font-medium rounded ${getActivityColor(
+                              group.activityLevel
+                            )}`}
+                          >
+                            {group.activityLevel}
                           </span>
                         </div>
 
-                        <p className="text-gray-600 mb-4">
-                          {discussion.preview}
-                        </p>
+                        <p className="text-gray-600 mb-4">{group.description}</p>
 
-                        <div className="flex items-center space-x-6 text-sm text-gray-500">
-                          <span>By {discussion.author}</span>
-                          <div className="flex items-center space-x-1">
-                            <Clock className="h-4 w-4" />
-                            <span>{discussion.time}</span>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2 text-sm text-gray-500">
+                            <Users className="h-4 w-4" />
+                            <span>{group.members.length} members</span>
                           </div>
-                          <div className="flex items-center space-x-1">
-                            <MessageCircle className="h-4 w-4" />
-                            <span>{discussion.replies} replies</span>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <Heart className="h-4 w-4" />
-                            <span>{discussion.likes} likes</span>
-                          </div>
+                          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300 font-medium">
+                            Join Group
+                          </button>
                         </div>
                       </div>
-
-                      <div className="flex space-x-2 ml-4">
-                        <button
-                          className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                          aria-label="Like discussion"
-                          title="Like discussion"
-                        >
-                          <Heart className="h-5 w-5" />
-                        </button>
-                        <button
-                          className="p-2 text-gray-400 hover:text-blue-500 transition-colors"
-                          aria-label="Share discussion"
-                          title="Share discussion"
-                        >
-                          <Share2 className="h-5 w-5" />
-                        </button>
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === "groups" && (
-            <div>
-              <div className="flex justify-between items-center mb-8">
-                <h2 className="text-3xl font-bold text-gray-900">
-                  Study Groups
-                </h2>
-                <button className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300 font-medium">
-                  Create Group
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {studyGroups.map((group, index) => (
-                  <div
-                    key={index}
-                    className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 p-6"
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div
-                          className={`w-12 h-12 ${group.color} rounded-full flex items-center justify-center text-white font-bold text-lg`}
-                        >
-                          {group.name.charAt(0)}
-                        </div>
-                        <div>
-                          <h3 className="text-xl font-semibold text-gray-900">
-                            {group.name}
-                          </h3>
-                          <p className="text-sm text-gray-600">
-                            {group.subject}
-                          </p>
-                        </div>
-                      </div>
-                      <span
-                        className={`px-2 py-1 text-xs font-medium rounded ${getActivityColor(
-                          group.activity
-                        )}`}
-                      >
-                        {group.activity}
-                      </span>
-                    </div>
-
-                    <p className="text-gray-600 mb-4">{group.description}</p>
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2 text-sm text-gray-500">
-                        <Users className="h-4 w-4" />
-                        <span>{group.members} members</span>
-                      </div>
-                      <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300 font-medium">
-                        Join Group
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === "achievements" && (
-            <div>
-              <div className="mb-8">
-                <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                  Achievements
-                </h2>
-                <p className="text-lg text-gray-600">
-                  Unlock badges and achievements as you progress in your
-                  learning journey
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {achievements.map((achievement, index) => (
-                  <div
-                    key={index}
-                    className="bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow duration-300 p-6 text-center"
-                  >
-                    <div className="text-4xl mb-4">{achievement.icon}</div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      {achievement.title}
-                    </h3>
-                    <p className="text-gray-600 text-sm mb-4">
-                      {achievement.description}
-                    </p>
-
-                    <div className="flex items-center justify-between">
-                      <span
-                        className={`px-2 py-1 text-xs font-medium rounded ${getRarityColor(
-                          achievement.rarity
-                        )}`}
-                      >
-                        {achievement.rarity}
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        {achievement.earned} earned
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === "leaderboard" && (
-            <div>
-              <div className="mb-8">
-                <h2 className="text-3xl font-bold text-gray-900 mb-4">
-                  Leaderboard
-                </h2>
-                <p className="text-lg text-gray-600">
-                  See how you rank against other students this week
-                </p>
-              </div>
-
-              <div className="bg-white rounded-xl shadow-md overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
-                          Rank
-                        </th>
-                        <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
-                          Student
-                        </th>
-                        <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
-                          Points
-                        </th>
-                        <th className="px-6 py-4 text-left text-sm font-medium text-gray-500 uppercase tracking-wider">
-                          Change
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {leaderboard.map((student) => (
-                        <tr
-                          key={student.rank}
-                          className="hover:bg-gray-50 transition-colors duration-200"
-                        >
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center space-x-2">
-                              <span className="text-2xl">{student.badge}</span>
-                              <span className="text-lg font-bold text-gray-900">
-                                #{student.rank}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-lg font-medium text-gray-900">
-                              {student.name}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-lg font-bold text-blue-600">
-                              {student.points.toLocaleString()}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span
-                              className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                                student.change.includes("+")
-                                  ? "bg-green-100 text-green-800"
-                                  : student.change.includes("-")
-                                  ? "bg-red-100 text-red-800"
-                                  : "bg-gray-100 text-gray-800"
-                              }`}
-                            >
-                              {student.change}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
                 </div>
-              </div>
-            </div>
+              )}
+
+              {(activeTab === "achievements" || activeTab === "leaderboard") && (
+                <div className="text-center py-12">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                    {activeTab === "achievements" ? "Achievements" : "Leaderboard"}
+                  </h2>
+                  <p className="text-gray-600">
+                    This section is coming soon! Stay tuned for exciting updates.
+                  </p>
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>
